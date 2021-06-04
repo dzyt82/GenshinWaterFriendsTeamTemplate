@@ -46,6 +46,69 @@ void ORAfliter(LL MX)
 }
 ```
 
+## min_25筛框架
+```cpp
+inline void prework(LL n)
+{
+    int tot = 0;
+    for (LL l = 1, r; l <= n; l = r + 1)
+    {
+        r = n / (n / l); // 数论分块？
+        w[++tot] = n / l;
+        // g1[tot] = w[tot] % mo;
+        // g2[tot] = (g1[tot] * (g1[tot] + 1) >> 1) % mo * ((g1[tot] << 1) + 1) % mo * inv3 % mo;
+        // g2[tot]--;
+        // g1[tot] = (g1[tot] * (g1[tot] + 1) >> 1) % mo - 1;
+        valposition(n / l, n) = tot;
+        g1[tot] = n / l - 1;
+        // g2[tot] = n / l - 1;
+    }
+    for (int i = 1; i <= prime_number; i++)
+    {
+        for (int j = 1; j <= tot and (LL) prime[i] * prime[i] <= w[j]; j++)
+        {
+            LL n_div_m_val = w[j] / prime[i];
+            if (n_div_m_val)
+            {
+                int n_div_m = valposition(n_div_m_val, n); // m: prime[i]
+                g1[j] -= g1[n_div_m] - (i - 1);            // 枚举第i个质数，所以可以直接减去i-1，这里无需记录sp
+            }
+            // g1[j] -= (LL)prime[i] * (g1[k] - sp1[i - 1] + mo) % mo;
+            // g2[j] -= (LL)prime[i] * prime[i] % mo * (g2[k] - sp2[i - 1] + mo) % mo;
+            // g1[j] %= mo,
+            //     g2[j] %= mo;
+            // if (g1[j] < 0)
+            //     g1[j] += mo;
+            // if (g2[j] < 0)
+            //     g2[j] += mo;
+        }
+    }
+}
+// 1~x中最小质因子大于y的函数值
+inline LL S_(LL x, int y)
+{
+    if (prime[y] >= x)
+        return 0;
+    int k = valposition(x, n);
+    // 此处g1、g2代表1、2次项
+    LL ans = (g2[k] - g1[k] + mo - (sp2[y] - sp1[y]) + mo) % mo;
+    // ans = (ans + mo) % mo;
+    for (int i = y + 1; i <= prime_number and prime[i] * prime[i] <= x; ++i)
+    {
+        LL pe = prime[i];
+        for (int e = 1; pe <= x; e++, pe *= prime[i])
+        {
+            LL xx = pe % mo;
+            // 大概这里改ans？原题求p^k*(p^k-1)
+            ans = (ans + xx * (xx - 1) % mo * (S_(x / pe, i) + (e != 1))) % mo;
+        }
+    }
+    return ans % mo;
+}
+
+```
+
+
 ## 卢卡斯定理
 
 ```cpp
@@ -321,3 +384,81 @@ void Gauss() {
 }
 ```
 
+## 公式
+
+卡特兰数 K(x) = C(2*x, x) / (x + 1)
+
+## 来自bot的球盒问题
+
+```py
+def A072233_list(n: int, m: int, mod=0) -> list:
+    """n个无差别球塞进m个无差别盒子方案数"""
+    mod = int(mod)
+    f = [[0] * (m + 1)] * (n + 1)
+    f[0][0] = 1
+    for i in range(1, n+1):
+        for j in range(1, min(i+1, m+1)): # 只是求到m了话没必要打更大的
+            f[i][j] = f[i-1][j-1] + f[i-j][j]
+            if mod: f[i][j] %= mod
+    return f
+
+def A048993_list(n: int, m: int, mod=0) -> list:
+    """第二类斯特林数"""
+    mod = int(mod)
+    f = [1] + [0] * m
+    for i in range(1, n+1):
+        for j in range(min(m, i), 0, -1):
+            f[j] = f[j-1] + f[j] * j
+            if mod: f[j] %= mod
+        f[0] = 0
+    return f
+
+
+def A000110_list(m, mod=0):
+    """集合划分方案总和，或者叫贝尔数"""
+    mod = int(mod)
+    A = [0 for i in range(m)]
+    # m -= 1
+    A[0] = 1
+    # R = [1, 1]
+    for n in range(1, m):
+        A[n] = A[0]
+        for k in range(n, 0, -1):
+            A[k-1] += A[k]
+            if mod: A[k-1] %= mod
+        # R.append(A[0])
+    # return R
+    return A[0]
+
+async def 球盒(*attrs, kwargs={}):
+    """求解把n个球放进m个盒子里面有多少种方案的问题。
+必须指定盒子和球以及允不允许为空三个属性。
+用法：
+    #球盒 <盒子相同？(0/1)><球相同？(0/1)><允许空盒子？(0/1)> n m
+用例：
+    #球盒 110 20 5
+    上述命令求的是盒子相同，球相同，不允许空盒子的情况下将20个球放入5个盒子的方案数。"""
+    # 参考https://www.cnblogs.com/sdfzsyq/p/9838857.html的算法
+    if len(attrs)!=3:
+        return '不是这么用的！请输入#h #球盒'
+    n, m = map(int, attrs[1:3])
+    if attrs[0] == '110':
+        f = A072233_list(n, m)
+        return f[n][m]
+    elif attrs[0] == '111':
+        f = A072233_list(n, m)
+        return sum(f[-1])
+    elif attrs[0] == '100':
+        return A048993_list(n, m)[-1]
+    elif attrs[0] == '101':
+        return sum(A048993_list(n, m))
+    elif attrs[0] == '010':
+        return comb(n-1, m-1)
+    elif attrs[0] == '011':
+        return comb(n+m-1, m-1)
+    elif attrs[0] == '000': # 求两个集合的满射函数的个数可以用
+        return A048993_list(n, m)[-1] * math.factorial(m)
+    elif attrs[0] == '001':
+        return m**n
+
+```

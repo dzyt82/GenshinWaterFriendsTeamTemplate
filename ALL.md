@@ -5153,5 +5153,503 @@ __gnu_pbds::tree<int, __gnu_pbds::null_type, std::less<int>, __gnu_pbds::rb_tree
 //	uniform_int_distribution<long long> dist(0, 1000000000);  // 给定范围
 //	cout << dist(rand_num) << endl;
 
+double randreal(double begin, double end)
+{
+	static std::default_random_engine eng(time(0));
+	std::uniform_real_distribution<> skip_rate(begin, end);
+	return skip_rate(eng);
+}
+
+int randint(int begin, int end)
+{
+	static std::default_random_engine eng(time(0));
+	std::uniform_int_distribution<> skip_rate(begin, end);
+	return skip_rate(eng);
+}
+
 
 ```
+
+石子合并 4e4
+
+找到第一个a\[i]满足a\[i-1]<=a\[i+1]，将他俩合并。
+
+从第i位往前找第一个a\[k]满足a\[k]>刚才的合并结果。
+
+将合并结果放在k位置之后，若无满足条件的k，放在第一个位置。若i不存在，直接合并最后两个数。
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+#define ll long long
+const ll N=41000;
+ll n,a[N],ans,now=1,pro;
+int main()
+{
+	scanf("%lld",&n);
+	for(ll i=1;i<=n;i++) scanf("%lld",&a[i]);
+	while(now<n-1)
+	{
+		for(pro=now;pro<n-1;pro++)
+		{
+			if(a[pro+2]<a[pro]) continue;
+			a[pro+1]+=a[pro];
+            ans+=a[pro+1];ll k;
+			for(k=pro;k>now;k--) a[k]=a[k-1]; 
+            now++; k=pro+1;
+			while(now<k&&a[k-1]<a[k]) {a[k]^=a[k-1]^=a[k]^=a[k-1];k--;}
+			break;
+		}
+		if(pro==n-1) {a[n-1]+=a[n];ans+=a[n-1];n--;}
+	}
+	if(now==n-1) ans+=(a[n-1]+a[n]); 
+    printf("%lld\n",ans);
+	return 0;
+}
+```
+
+### 线形基
+
+```c++
+#include<bits/stdc++.h>
+using namespace std;
+// #pragma GCC optimize(2)
+#define fi first
+#define se second
+typedef pair<int, int> pii;
+typedef long long ll;
+typedef unsigned long long ull;
+typedef long double ld;
+void io() { ios::sync_with_stdio(false); cin.tie(0); cout.tie(0); }
+template<typename T>
+inline void debug(T const& x) { cout << x << "\n"; }
+
+struct LinearBase {
+    const int siz=64;
+    int MN;
+    vector<ll>p, tmp;
+    bool flag = false;
+    LinearBase(){
+        p.resize(siz);
+        tmp.resize(siz);
+        MN=siz-1;
+    }
+
+    void clear()
+    {
+        // siz = MN = 0;
+        p.clear(); tmp.clear();
+        flag = false;
+    }
+
+    void resize(int size)
+    {
+        p.resize(siz);
+        tmp.resize(siz);
+        MN = siz - 1;
+        flag = false;
+    }
+
+    void insert(ll x)
+    {
+        for (int i = MN; ~i; --i) {
+            if (x & (1ll << i)) {
+                if (!p[i]) {
+                    p[i] = x;
+                    return;
+                }
+                else
+                    x ^= p[i];
+            }
+        }
+        flag = true;
+    }
+
+    bool check(ll x)
+    {
+        for (int i = MN; ~i; i--) {
+            if (x & (1ll << i)) {
+                if (!p[i]) return false;
+                else x ^= p[i];
+            }
+        }
+        return true;
+    }
+
+    ll Qmax()
+    {
+        ll res = 0ll;
+        for (int i = MN; ~i; --i) {
+            res = max(res, res ^ p[i]);
+        }
+        return res;
+    }
+
+    ll Qmin()
+    {
+        if (flag) return 0;
+        for (int i = 0; i <= MN; ++i)
+            if (p[i]) p[i];
+    }
+
+    // void rebuild()
+    // {
+    //     int cnt=0,top=0;
+    //     for(int i=MN;~i)
+    // }
+
+    ll Qnth_element(ll k)
+    {
+        ll res = 0;
+        int cnt = 0;
+        k -= flag;
+        if (!k) return 0;
+        for (int i = 0; i <= MN; ++i) {
+            for (int j = i - 1; ~j; j--) {
+                if (p[i] & (1ll << j)) p[i] ^= p[j];
+            }
+            if (p[i]) tmp[cnt++] = p[i];
+        }
+        if (k >= (1ll << cnt)) return -1;
+        for (int i = 0; i < cnt; ++i)
+            if (k & (1ll << i))
+                res ^= tmp[i];
+        return res;
+    }
+
+
+};
+
+
+
+int main()
+{
+    io();
+    int n;
+    cin >> n;
+    LinearBase lb;
+    for (int i = 0; i < n; ++i) {
+        ll _;
+        cin >> _;
+        lb.insert(_);
+    }
+    cout << lb.Qmax() << "\n";
+    return 0;
+}
+```
+
+### Add fhq-Treap
+
+#### 区间翻转(可以部分替代splay)
+
+```c++
+# include<iostream>
+# include<cstdio>
+# include<cstring>
+# include<cstdlib>
+using namespace std;
+const int MAX=1e5+1;
+int n,m,tot,rt;
+struct Treap{
+    int pos[MAX],siz[MAX],w[MAX];
+    int son[MAX][2];
+    bool fl[MAX];
+    void pus(int x)
+    {
+        siz[x]=siz[son[x][0]]+siz[son[x][1]]+1;
+    }
+    int build(int x)
+    {
+        w[++tot]=x,siz[tot]=1,pos[tot]=rand();
+        return tot;
+    }
+    void down(int x)
+    {
+        swap(son[x][0],son[x][1]);
+        if(son[x][0]) fl[son[x][0]]^=1;
+        if(son[x][1]) fl[son[x][1]]^=1;
+        fl[x]=0;
+    }
+    int merge(int x,int y)
+    {
+        if(!x||!y) return x+y;
+        if(pos[x]<pos[y])
+        {
+            if(fl[x]) down(x);
+            son[x][1]=merge(son[x][1],y);
+            pus(x);
+            return x;
+        }
+        if(fl[y]) down(y);
+        son[y][0]=merge(x,son[y][0]);
+        pus(y);
+        return y;
+    }
+    void split(int i,int k,int &x,int &y)
+    {
+        if(!i)
+        {
+            x=y=0;
+            return;
+        }
+        if(fl[i]) down(i);
+        if(siz[son[i][0]]<k)
+        x=i,split(son[i][1],k-siz[son[i][0]]-1,son[i][1],y);
+        else
+        y=i,split(son[i][0],k,x,son[i][0]);
+        pus(i);
+    }
+    void coutt(int i)
+    {
+        if(!i) return;
+        if(fl[i]) down(i);
+        coutt(son[i][0]);
+        printf("%d ",w[i]);
+        coutt(son[i][1]);
+    }
+}Tree;
+int main()
+{
+    scanf("%d%d",&n,&m);
+    for(int i=1;i<=n;i++)
+      rt=Tree.merge(rt,Tree.build(i));
+    for(int i=1;i<=m;i++)
+      {
+          int l,r,a,b,c;
+          scanf("%d%d",&l,&r);
+          Tree.split(rt,l-1,a,b);
+        Tree.split(b,r-l+1,b,c);
+        Tree.fl[b]^=1;
+        rt=Tree.merge(a,Tree.merge(b,c));
+      }
+    Tree.coutt(rt);
+    return 0;
+}
+```
+
+#### 可持久化
+
+```c++
+#include<cstdio>
+#include<cctype>
+#include<cstring>
+#include<cstdlib>
+#include<ctime>
+#include<utility>
+#include<algorithm>
+using namespace std;
+typedef pair<int,int> Pair;
+int read() {
+    int x=0,f=1;
+    char c=getchar();
+    for (;!isdigit(c);c=getchar()) if (c=='-') f=-1;
+    for (;isdigit(c);c=getchar()) x=x*10+c-'0';
+    return x*f;
+}
+const int maxn=5e4+5;
+const int nlogn=1.3e7+5;
+struct node {
+    int x,hp,l,r,sum,size;
+    bool rev;
+    void clear() {
+        x=hp=l=r=sum=size=rev=0;
+    }
+};
+struct TREAP {
+    int pool[nlogn];
+    int pooler;
+    node t[nlogn];
+    int now,all;
+    int root[maxn];
+    TREAP ():now(0),pooler(1) {
+        for (int i=1;i<nlogn;++i) pool[i]=i;
+        root[now]=pool[pooler++];
+    }
+    int newroot() {
+        int ret=pool[pooler++];
+        return ret;
+    }
+    int newnode(int x) {
+        int ret=pool[pooler++];
+        t[ret].hp=rand();
+        t[ret].size=1;
+        t[ret].x=t[ret].sum=x;
+        return ret;
+    }
+    void delnode(int x) {
+        t[x].clear();
+        pool[--pooler]=x;
+    }
+    void next() {
+        root[++all]=newroot();
+        t[root[all]]=t[root[now]];
+        now=all;
+    }
+    void back(int x) {
+        now=x;
+    }
+    void update(int x) {
+        t[x].sum=t[x].x+t[t[x].l].sum+t[t[x].r].sum;
+        t[x].size=t[t[x].l].size+t[t[x].r].size+1;
+    }
+    void pushdown(int x) {
+        if (!t[x].rev) return;
+        if (t[x].l) {
+            int tx=newnode(t[t[x].l].x);
+            t[tx]=t[t[x].l];
+            t[tx].rev^=true;
+            t[x].l=tx;
+        }
+        if (t[x].r) {
+            int tx=newnode(t[t[x].r].x);
+            t[tx]=t[t[x].r];
+            t[tx].rev^=true;
+            t[x].r=tx;
+        }
+        swap(t[x].l,t[x].r);
+        t[x].rev=false;
+    }
+    int merge(int x,int y) {
+        if (!x) return y;
+        if (!y) return x;
+        int now;
+        if (t[x].hp<=t[y].hp) {
+            now=newnode(t[x].x);
+            t[now]=t[x];
+            pushdown(now);
+            t[now].r=merge(t[now].r,y);
+        } else {
+            now=newnode(t[y].x);
+            t[now]=t[y];
+            pushdown(now);
+            t[now].l=merge(x,t[now].l);
+        }
+        update(now);
+        return now;
+    }
+    Pair split(int x,int p) {
+        if (t[x].size==p) return make_pair(x,0);
+        int now=newnode(t[x].x);
+        t[now]=t[x];
+        pushdown(now);
+        int l=t[now].l,r=t[now].r;
+        if (t[l].size>=p) {
+            t[now].l=0;
+            update(now);
+            Pair g=split(l,p);
+            now=merge(g.second,now);
+            return make_pair(g.first,now);
+        } else if (t[l].size+1==p) {
+            t[now].r=0;
+            update(now);
+            return make_pair(now,r);
+        } else {
+            t[now].r=0;
+            update(now);
+            Pair g=split(r,p-t[l].size-1);
+            now=merge(now,g.first);
+            pushdown(now);
+            return make_pair(now,g.second);
+        }
+    }
+    void rever(int l,int r) {
+        ++l,++r;
+        Pair g=split(root[now],l-1);
+        Pair h=split(g.second,r-l+1);
+        int want=h.first;
+        int here=newnode(t[want].x);
+        t[here]=t[want];
+        t[here].rev^=true;
+        int fi=merge(g.first,here);
+        int se=merge(fi,h.second);
+        root[now]=se;
+    }
+    int query(int l,int r) {
+        ++l,++r;
+        Pair g=split(root[now],l-1);
+        Pair h=split(g.second,r-l+1);
+        int want=h.first;
+        int ret=t[want].sum;
+        int fi=merge(g.first,want);
+        int se=merge(fi,h.second);
+        root[now]=se;
+        return ret;
+    }
+    void insert(int x) {
+        int k=newnode(x);
+        root[now]=merge(root[now],k);
+    }
+} Treap;
+int main() {
+#ifndef ONLINE_JUDGE
+    freopen("test.in","r",stdin);
+    freopen("my.out","w",stdout);
+#endif
+    srand(time(0));
+    int n=read(),m=read();
+    for (int i=1;i<=n;++i) {
+        int x=read();
+        Treap.insert(x);
+    } 
+    while (m--) {
+        int op=read();
+        if (op==1) {
+            Treap.next();
+            int l=read(),r=read();
+            Treap.rever(l,r);
+        } else if (op==2) {
+            int l=read(),r=read();
+            int ans=Treap.query(l,r);
+            printf("%d\n",ans);
+        } else if (op==3) {
+            Treap.back(read());
+        }
+    }
+    return 0;
+}
+```
+
+### 常见博弈
+
+#### 巴什博弈
+
+只有一堆n个物品，两个人轮流从这堆物品中取物，规定每次至少取一个，最多取m个。最后取光者得胜。
+
+n%（m+1）==0必败，否则必胜
+
+#### 威佐夫博弈
+
+有两堆各若干个物品，两个人轮流从任意一堆中取出至少一个或者同时从两堆中取出同样多的物品，规定每次至少取一个，至多不限，最后取光者胜利。设两堆分别为n和m
+
+较小堆*两堆之差为（黄金分割比+1）时必败，否则比胜
+
+```c++
+int a=min(n,m);
+int b=max(n,m);
+double r=(sqrt(5.0)+1)/2;
+double c=(double)b-a;
+int temp=(int)(r*c);
+if(temp==a)
+    败
+else
+    胜
+```
+
+#### nim博弈
+
+有若干堆各若干个物品，两个人轮流从某一堆取任意多的物品，规定每次至少取一个，多者不限，最后取光者得胜。
+
+各堆物品异或为0时必败，否则必胜
+
+#### anti-nim博弈
+
+有若干堆各若干个物品，两个人轮流从某一堆取任意多的物品，规定每次至少取一个，多者不限，最后取光者得败。
+
+先手胜当且仅当 ①所有堆石子数都为1且游戏的SG值为0（即有偶数个孤单堆-每堆只有1个石子数）；②存在某堆石子数大于1且游戏的SG值不为0.
+
+#### 阶梯博弈
+
+地面表示第0号阶梯。每次都可以将一个阶梯上的石子向其左侧移动任意个石子，没有可以移动的空间时（及所有石子都位于地面时）输。
+
+阶梯博弈等效为奇数号阶梯的尼姆博弈
+

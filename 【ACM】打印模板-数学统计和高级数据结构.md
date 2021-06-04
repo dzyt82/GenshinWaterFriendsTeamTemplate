@@ -290,109 +290,141 @@ int main() {
 
 
 
-## 主席树//待替换
+## 主席树
 
 ```cpp
-LL Array[M], SORTED[M];
-LL COUNT = 0;
-
-struct segtreeModel
+template <typename TYP>
+struct PersistentSengmentTree
 {
-    LL val;
-    segtreeModel *l, *r;
-} T[M << 5];
+    static const int size_elapsed = 9000000; // 因为需要静态分配，在这里指定预估最大大小
 
-segtreeModel *headers[M];
+    static inline int mid(int lower, int upper) { return (lower + upper) >> 1; };
 
-inline segtreeModel *build(const LL rg1, const LL rg2) //从0开始的主席树()
-{
-    LL tmp = COUNT++;
-    T[tmp].val = 0;
-    if (rg2 > rg1)
+    int cursiz = 0;
+    int l_bound_cache, r_bound_cache;
+    struct Node
     {
-        T[tmp].l = build(rg1, DMID(rg1, rg2));
-        T[tmp].r = build(DMID(rg1, rg2) + 1, rg2);
-    }
-    return &T[tmp];
-}
+        TYP meta;
+        int l, r;
+        Node() : meta(), l(-1), r(-1) {}
+        void at_build()
+        {
+            // memset(meta, 0, sizeof(meta));
+            meta = 0;
+            l = -1;
+            r = -1;
+        }
+    } nodes[size_elapsed];
 
-inline segtreeModel *modify(const LL rg1, const LL rg2,
-                            const LL &x, const segtreeModel *pre) //x:排在第几
-{
-    LL tmp = COUNT++;
-    T[tmp].l = pre->l;
-    T[tmp].r = pre->r; //拷贝上一个时间的状态
-    T[tmp].val = pre->val + 1;
-    if (rg2 > rg1)
+    int headers[size_elapsed];
+    int h_pointer = 0;
+
+    void init()
     {
-        if (x <= DMID(rg1, rg2))
-            T[tmp].l = modify(rg1, DMID(rg1, rg2), x, pre->l);
-        else
-            T[tmp].r = modify(DMID(rg1, rg2) + 1, rg2, x, pre->r);
+        h_pointer = 0;
+        cursiz = 0;
     }
-    return &T[tmp];
-}
 
-inline LL queryPosition(const LL rg1, const LL rg2,
-                segtreeModel *u, segtreeModel *v, LL rank)
-{
-    if (rg1 >= rg2)
-        return rg1;
-    LL x = v->l->val - u->l->val;
-    if (x >= rank) //左节点元素个数
-        return query(rg1, DMID(rg1, rg2), u->l, v->l, rank);
-    else
-        return query(DMID(rg1, rg2) + 1, rg2, u->r, v->r, rank - x);
-}
+    // std::vector<Node> nodes; // 动态开点的选项
+    // PersistentSengmentTree() : cursiz(0) { nodes.resize(size_elapsed); }
 
-inline LL querySum
-
-LL positions[M];
-LL father[M];
-
-int main()
-{
-    LL n, m, t, _T, ans;
-    t = qr();
-    F(_T, t, 1)
+    inline int _build(int l_bound, int r_bound)
     {
-        printf("Case #%lld:", _T + 1);
-        n = qr();
-        m = qr();
-        COUNT = ans = 0;
-        mem(father, 0);
-        mem(positions, 0);
-        LL i;
-        F(i, n, 1)
+        int cur_num = cursiz++;
+        Node &me = nodes[cur_num];
+        me.at_build();
+        if (r_bound > l_bound)
         {
-            Array[i] = qr();
-            // SORTED[i] = Array[i];
+            int m = mid(l_bound, r_bound);
+            me.l = _build(l_bound, m);
+            me.r = _build(m + 1, r_bound);
         }
-        headers[0] = build(0, n - 1);
-        for (i = n - 1; i; i--)
-        {
-            if(!positions[Array[i]])
-            modify(headers[0],)
-        }
-        // std::sort(SORTED, SORTED + n);
-        LL len = std::unique(SORTED, SORTED + n) - SORTED;
-        
-        F(i, n, 1)
-        { //lower_bound:大于等于
-            LL t = std::lower_bound(SORTED, SORTED + len, Array[i]) - SORTED;
-            headers[i + 1] = modify(0, len - 1, t, headers[i]);
-        }
-
-        while (m--)
-        {
-            LL o1 = qr();
-            LL o2 = qr();
-            LL o3 = qr(); //rank不能减，因为主席树内存的是元素个数，而且这个query查询的时间区间已经从1起排了
-            LL index = query(0, len - 1, headers[o1 - 1], headers[o2], o3);
-            printf("%lld\n", SORTED[index]);
-        }
+        return cur_num;
     }
-}
+
+    void build(int _n)
+    {
+        headers[h_pointer++] = _build(1, _n);
+        l_bound_cache = 1 - 1;
+        r_bound_cache = _n - 1;
+    }
+
+    inline int _update(int l_bound, int r_bound, int pos, int before, TYP &&updval)
+    {
+        int cur_num = cursiz++;
+        nodes[cur_num] = nodes[before];
+        Node &me = nodes[cur_num];
+        // 这里改更新策略
+        me.meta += updval;
+        //
+        // cerr << "[" << l_bound << ", " << r_bound << "]: " << me.meta << "\t+" << cur_num << endl;
+        if (l_bound < r_bound)
+        {
+            int m = mid(l_bound, r_bound);
+            if (pos <= m) // 值域线段树，落在哪边就往哪边走
+                me.l = _update(l_bound, m, pos, me.l, updval);
+            else
+                me.r = _update(m + 1, r_bound, pos, me.r, updval);
+        }
+        return cur_num;
+    }
+    inline int _update(int l_bound, int r_bound, int pos, int before, TYP &updval) { return _update(l_bound, r_bound, pos, before, std::move(updval)); }
+
+    void update(int pos, TYP &&updval)
+    {
+        headers[h_pointer] = _update(l_bound_cache, r_bound_cache, pos, headers[h_pointer - 1], std::move(updval));
+        h_pointer++;
+    }
+    void update(int pos, TYP &updval)
+    {
+        headers[h_pointer] = _update(l_bound_cache, r_bound_cache, pos, headers[h_pointer - 1], std::move(updval));
+        h_pointer++;
+    }
+
+    /*查询的rank是排名，返回的是离散化的排好序的序列的下标，查询函数根据业务需求改*/
+    inline int _query(int l_bound, int r_bound, int front_node, int back_node, TYP &&rank)
+    {
+        Node &u = nodes[front_node];
+        Node &v = nodes[back_node];
+        if (l_bound >= r_bound)
+            return l_bound;
+        TYP lx = nodes[v.l].meta - nodes[u.l].meta;
+        // TYP rx = nodes[v.r].meta - nodes[u.r].meta;
+        // TYP lx = nodes[v.l].meta;
+        // cerr << "vlmeta:" << nodes[v.l].meta << "\tulmeta:" << nodes[u.l].meta << endl;
+        // cerr << "vrmeta:" << nodes[v.r].meta << "\turmeta:" << nodes[u.r].meta << endl;
+        int m = mid(l_bound, r_bound);
+        if (lx >= rank)
+            return _query(l_bound, m, u.l, v.l, rank);
+        else //if (2 * rx > rank)
+            return _query(m + 1, r_bound, u.r, v.r, rank - lx);
+        // return 0;
+    }
+    inline int _query(int l_bound, int r_bound, int front_node, int back_node, TYP &rank) { return _query(l_bound, r_bound, front_node, back_node, std::move(rank)); }
+
+    int query(int l, int r, TYP &&k)
+    {
+        return _query(l_bound_cache, r_bound_cache, headers[l - 1], headers[r], k);
+    }
+    int query(int l, int r, TYP &k)
+    {
+        return _query(l_bound_cache, r_bound_cache, headers[l - 1], headers[r], k);
+    }
+
+    int legacy_query(int l_bound, int r_bound, int ql, int qr, int cur)
+    {
+        Node &me = nodes[cur];
+        if (l_bound >= ql and r_bound <= qr)
+            return me.meta;
+        int res = 0;
+        int m = mid(l_bound, r_bound);
+        if (ql <= m)
+            res += legacy_query(l_bound, m, ql, qr, me.l);
+        if (qr >= m + 1)
+            res += legacy_query(m + 1, r_bound, ql, qr, me.r);
+        return res;
+    }
+};
 ```
 
 ## 树链剖分//？
@@ -1272,45 +1304,40 @@ void Get_LB(ll x)
 ## ST表
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
-const int logn = 21;
-const int maxn = 2000001;
-int f[maxn][logn], Logn[maxn];
-inline int read() {
-	char c = getchar();
-		int x = 0, f = 1;
-	while (c < '0' || c > '9') {
-		if (c == '-') f = -1;
-		c = getchar();
-	}
-	while (c >= '0' && c <= '9') {
-		x = x * 10 + c - '0';
-		c = getchar();
-	}
-	return x * f;
-}
-void pre() {
-	Logn[1] = 0;
-	Logn[2] = 1;
-	for (int i = 3; i < maxn; i++) {
-		Logn[i] = Logn[i / 2] + 1;
-	}
-}
-int main() {
-	int n = read(), m = read();
-	for (int i = 1; i <= n; i++) f[i][0] = read();
-	pre();
-	for (int j = 1; j <= logn; j++)
-		for (int i = 1; i + (1 << j) - 1 <= n; i++)
-			f[i][j] = max(f[i][j - 1], f[i + (1 << (j - 1))][j - 1]);
-	for (int i = 1; i <= m; i++) {
-		int x = read(), y = read();
-		int s = Logn[y - x + 1];
-		printf("%d\n", max(f[x][s], f[y - (1 << s) + 1][s]));
-	}
-	return 0;
-}
+template <typename INTEGER>
+struct STMax
+{
+    // 从0开始
+    std::vector<std::vector<INTEGER>> data;
+    STMax(int siz)
+    {
+        int upper_pow = clz(siz) + 1;
+        data.resize(upper_pow);
+        data.assign(upper_pow, vector<INTEGER>());
+        data[0].assign(siz, 0);
+    }
+    INTEGER &operator[](int where)
+    {
+        return data[0][where];
+    }
+    void generate_max()
+    {
+        for (auto j : range(1, data.size()))
+        {
+            data[j].assign(data[0].size(), 0);
+            for (int i = 0; i + (1 << j) - 1 < data[0].size(); i++)
+            {
+                data[j][i] = std::max(data[j - 1][i], data[j - 1][i + (1 << (j - 1))]);
+            }
+        }
+    }
+    /*闭区间[l, r]，注意有效位从0开始*/
+    INTEGER query_max(int l, int r)
+    {
+        int k = 31 - __builtin_clz(r - l + 1);
+        return std::max(data[k][l], data[k][r - (1 << k) + 1]);
+    }
+};
 ```
 
 # 莫队
